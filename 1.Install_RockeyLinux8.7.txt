@@ -1,0 +1,22 @@
+###############################
+### 1. 클린 Rockey linux 8.7 설치
+###############################
+1. Rockey linux 다운로드 
+   - https://rockylinux.org/ko/download
+   - https://docs.vmware.com/en/VMware-Greenplum/7/greenplum-database/install_guide-platform-requirements-overview.html
+   - 최소 8.7 이상 설치 권고 / Greenplum 가이드
+
+2. Greenplum 싱글머신 테스트용 스펙
+1) Greenplum 7 테스트용
+   - CPU: 4vcore
+   - Mem: 2048MB
+   - Disk: 20GB
+2) Greenplum 7 + Data Science 테스트용 스펙
+   - CPU: 8vcore
+   - Mem: 4096MB
+   - Disk: 100GB
+3) Rockey Linux 8.7 설치 
+   - 네트워크 설정: DHCP로 구성
+   - 계정, gpadmin/changeme 로 설치
+   - gpadmin 까지 생성
+

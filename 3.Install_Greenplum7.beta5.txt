@@ -1,0 +1,178 @@
+###############################
+### 3. Greenplum 설치
+###############################
+1) 디렉토리 생성 및 파일 복사
+[root@cdw ~]# mkdir -p /data/setup
+[root@cdw ~]# mkdir -p /data/coordinator
+[root@cdw ~]# mkdir -p /data/primary
+[root@cdw ~]# chown -R gpadmin:gpadmin /data/
+[root@cdw setup]# ls -la
+total 3193972
+drwxr-xr-x 2 gpadmin gpadmin        109 Aug 21 13:56 .
+drwxr-xr-x 5 gpadmin gpadmin         53 Aug 21 13:52 ..
+-rw-r--r-- 1 gpadmin gpadmin 3146830042 Aug 21 13:56 DataSciencePython3.9-1.1.0-gp7-el8_x86_64.gppkg
+-rw-r--r-- 1 gpadmin gpadmin  123790452 Aug 21 13:57 greenplum-db-7.0.0-beta.5-el8-x86_64.rpm
+[root@cdw setup]# yum install greenplum-db-7.0.0-beta.5-el8-x86_64.rpm
+
+2) Greenplum 설치 설정 파일 등록
+[root@cdw setup]# vi /etc/hosts
+[root@cdw setup]# cat /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+172.16.65.140 cdw
+[root@cdw setup]#
+
+[root@cdw local]# chown -R gpadmin:gpadmin /usr/local/greenplum-db*
+
+#############################
+
+[root@init ~]# cgconfigparser -l /etc/cgconfig.d/gpdb.conf
+
+##cgroup 설정 확인
+[root@init ~]# grep cgroup /proc/mounts
+tmpfs /sys/fs/cgroup tmpfs ro,nosuid,nodev,noexec,mode=755 0 0
+cgroup /sys/fs/cgroup/systemd cgroup rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd 0 0
+cgroup /sys/fs/cgroup/net_cls,net_prio cgroup rw,nosuid,nodev,noexec,relatime,net_cls,net_prio 0 0
+..
+cgroup /sys/fs/cgroup/blkio cgroup rw,nosuid,nodev,noexec,relatime,blkio 0 0
+cgroup /sys/fs/cgroup/memory cgroup rw,nosuid,nodev,noexec,relatime,memory 0 0
+[root@init ~]#  ls -la /sys/fs/cgroup/cpu/gpdb
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 cgroup.clone_children
+..
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 tasks
+[root@init ~]# ls -la /sys/fs/cgroup/cpuacct/gpdb
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 cgroup.clone_children
+...
+-r--r--r-- 1 gpadmin gpadmin 0  2월  1 10:17 cpuacct.usage_user
+[root@init ~]# ls -la /sys/fs/cgroup/cpuset/gpdb
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 cgroup.clone_children
+...
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 notify_on_release
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 tasks
+[root@init ~]#  ls -la /sys/fs/cgroup/memory/gpdb
+..
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 memory.max_usage_in_bytes
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 memory.memsw.failcnt
+...
+-rw-rw-r-- 1 gpadmin gpadmin 0  2월  1 10:17 tasks
+[root@init ~]#
+
+## cgroup 서비스 등록 및 확인
+[root@init ~]# systemctl enable cgconfig.service
+Created symlink /etc/systemd/system/sysinit.target.wants/cgconfig.service → /usr/lib/systemd/system/cgconfig.service.
+[root@init ~]#
+
+######################
+10) 시스템 재기동
+[root@localhost limits.d]# sync;sync;init 6
+
+
+
+###############################
+### 3. Greenplum 7 설치
+###############################
+## 
+[root@init setup]# yum install greenplum-db-7.0.0-beta.0-rhel8-x86_64.rpm
+[root@cdw setup]# cd /usr/local/
+[root@cdw local]# chown -R gpadmin:gpadmin /usr/local/greenplum-db*
+[root@cdw local]# su - gpadmin
+[gpadmin@cdw ~]$ cd 
+[gpadmin@cdw ~]$ mkdir -p ~/gpconfigs
+[gpadmin@cdw ~]$ cp /usr/local/greenplum-db/docs/cli_help/gpconfigs/gpinitsystem_config ~/gpconfigs/
+[gpadmin@cdw ~]$ cd ~/gpconfigs/
+[gpadmin@cdw gpconfigs]$ vi hostfile_seg
+[gpadmin@cdw gpconfigs]$ cat hostfile_seg
+cdw
+
+## gpinitsystem_config 설정 파일 아래 내용으로 수정 (아래 예제는 한 노드당 4개의 primary segment)
+[gpadmin@cdw gpconfigs]$ vi gpinitsystem_config 
+[gpadmin@cdw gpconfigs]$ egrep "data|cdw"  gpinitsystem_config | grep -v "^#"
+declare -a DATA_DIRECTORY=(/data/primary /data/primary /data/primary /data/primary)
+COORDINATOR_HOSTNAME=cdw
+COORDINATOR_DIRECTORY=/data/coordinator
+[gpadmin@cdw gpconfigs]$ ls
+gpinitsystem_config  hostfile_seg
+[gpadmin@cdw gpconfigs]$ source /usr/local/greenplum-db/greenplum_path.sh
+
+## ssh로 접속할 때 패스워드 문의하지 않게 설정
+[gpadmin@cdw gpconfigs]$ gpssh-exkeys -f hostfile_seg
+
+## ssh cdw로 접속시 패스워드 문의하는지 확인 - 하지 않아야 함.
+[gpadmin@cdw gpconfigs]$ ssh cdw
+Activate the web console with: systemctl enable --now cockpit.socket
+[gpadmin@cdw ~]$ source /usr/local/greenplum-db/greenplum_path.sh
+[gpadmin@cdw ~]$ cd gpconfigs
+[gpadmin@cdw gpconfigs]$ gpinitsystem -c gpinitsystem_config -h hostfile_seg
+20230821:16:28:31:007098 gpinitsystem:cdw:gpadmin-[INFO]:----------------------------------------
+20230821:16:28:31:007098 gpinitsystem:cdw:gpadmin-[INFO]:-Greenplum Primary Segment Configuration
+20230821:16:28:31:007098 gpinitsystem:cdw:gpadmin-[INFO]:----------------------------------------
+20230821:16:28:31:007098 gpinitsystem:cdw:gpadmin-[INFO]:-cdw   6000    cdw     /data/primary/gpseg0    2
+20230821:16:28:31:007098 gpinitsystem:cdw:gpadmin-[INFO]:-cdw   6001    cdw     /data/primary/gpseg1    3
+20230821:16:28:31:007098 gpinitsystem:cdw:gpadmin-[INFO]:-cdw   6002    cdw     /data/primary/gpseg2    4
+20230821:16:28:31:007098 gpinitsystem:cdw:gpadmin-[INFO]:-cdw   6003    cdw     /data/primary/gpseg3    5
+
+Continue with Greenplum creation Yy|Nn (default=N):
+> y
+..
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-To complete the environment configuration, please
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-update gpadmin .bashrc file with the following
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-1. Ensure that the greenplum_path.sh file is sourced
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-Greenplum Database instance successfully created
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-------------------------------------------------------
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-To complete the environment configuration, please
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-update gpadmin .bashrc file with the following
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-1. Ensure that the greenplum_path.sh file is sourced
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-2. Add "export COORDINATOR_DATA_DIRECTORY=/data/coordinator/gpseg-1"
+..
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-The Coordinator /data/coordinator/gpseg-1/pg_hba.conf post gpinitsystem
+..
+20230821:16:28:54:007098 gpinitsystem:cdw:gpadmin-[INFO]:-------------------------------------------------------
+
+## ~/.bashrc에 아래 2라인 추가 및 현 세션에 source 적용
+[gpadmin@cdw gpconfigs]$ vi ~/.bashrc
+[gpadmin@cdw gpconfigs]$ tail -n2 ~/.bashrc
+source /usr/local/greenplum-db/greenplum_path.sh
+export COORDINATOR_DATA_DIRECTORY=/data/coordinator/gpseg-1
+[gpadmin@cdw gpconfigs]$ source ~/.bashrc
+
+## 외부 접속을 위해서 trust (비밀번호 없이 로그인 되도록 설정), 비밀번호 입력을 위해서는 "trust"대신 "md5"로 대체
+[gpadmin@cdw gpconfigs]$ vi /data/coordinator/gpseg-1/pg_hba.conf
+[gpadmin@cdw gpconfigs]$ tail -n1 /data/coordinator/gpseg-1/pg_hba.conf
+host     all         all             0.0.0.0/0              trust
+
+## 외부 접속할 수 있도록 pg_hba.conf 리로딩
+[gpadmin@cdw gpconfigs]$ gpstop -u
+20230821:16:34:57:015659 gpstop:cdw:gpadmin-[INFO]:-Starting gpstop with args: -u
+20230821:16:34:57:015659 gpstop:cdw:gpadmin-[INFO]:-Signalling all postmaster processes to reload
+[gpadmin@cdw gpconfigs]$
+
+## 가장 기본적인 설정 추가 및 반영 (GP Restart)
+[gpadmin@cdw gpconfigs]$ gpconfig -c gp_resource_manager -v "group"
+20230821:16:40:12:015912 gpconfig:cdw:gpadmin-[INFO]:-completed successfully with parameters '-c gp_resource_manager -v group'
+[gpadmin@cdw gpconfigs]$ gpconfig -c gp_workfile_compression -v on --masteronly
+20230821:16:40:21:016200 gpconfig:cdw:gpadmin-[INFO]:-completed successfully with parameters '-c gp_workfile_compression -v on --masteronly'
+[gpadmin@cdw gpconfigs]$ gpstop -af
+[gpadmin@cdw gpconfigs]$ gpstart -a
+
+## 사용할 Database 생성 및 SQL 테스트
+[gpadmin@cdw gpconfigs]$ createdb gpadmin
+[gpadmin@cdw gpconfigs]$ psql
+psql (12.12)
+Type "help" for help.
+
+gpadmin=# create table public.test ( a int ) distributed by (a);
+CREATE TABLE
+gpadmin=# insert into public.test select i from generate_series(1, 100) i ;
+INSERT 0 100
+gpadmin=# select count(*) from public.test;
+ count
+-------
+   100
+(1 row)
+
+## pgvector 설치 및 psql 종료
+gpadmin=# create extension vector;
+CREATE EXTENSION
+gpadmin=# \q
+[gpadmin@cdw gpconfigs]$

@@ -1,0 +1,111 @@
+###############################
+### 4. Installing a Data Science Package for Python
+###############################
+
+## plpython3 설치 및 확인
+[gpadmin@cdw ~]$ psql
+psql (12.12)
+Type "help" for help.
+
+gpadmin=# CREATE EXTENSION plpython3u;
+CREATE EXTENSION
+gpadmin=# 
+CREATE OR REPLACE FUNCTION pybool_func(a int) RETURNS boolean AS $$
+# container: plc_python3_shared
+    if (a > 0):
+        return True
+    else:
+        return False
+$$ LANGUAGE plpython3u;
+
+CREATE FUNCTION
+gpadmin=# SELECT pybool_func(-1);
+ pybool_func
+-------------
+ f
+(1 row)
+
+gpadmin=# SELECT pybool_func(1);
+ pybool_func
+-------------
+ t
+(1 row)
+
+gpadmin=#\q
+[gpadmin@cdw ~]$ 
+
+## Data Science Package 설치
+설치 시나리오: https://docs.vmware.com/en/VMware-Greenplum/7/greenplum-database/install_guide-install_python_dsmod.html
+[gpadmin@cdw ~]$ su -
+[root@cdw ~]# yum install tk -y
+[root@cdw ~]# su - gpadmin
+Last login: Mon Aug 21 16:38:43 KST 2023 from 172.16.65.1 on pts/1
+[gpadmin@cdw ~]$ cd /data/setup/
+[gpadmin@cdw setup]$ ls
+DataSciencePython3.9-1.1.0-gp7-el8_x86_64.gppkg  greenplum-db-7.0.0-beta.5-el8-x86_64.rpm
+[gpadmin@cdw setup]$ gppkg install DataSciencePython3.9-1.1.0-gp7-el8_x86_64.gppkg
+## Data Science Package 설치 이후 설정 값 변경으로 인하여, 현재 Fix 중에 있음. (임시 조치)
+[gpadmin@cdw setup]$ mv $GPHOME/etc/environment.d/30-data-science-python3.conf $GPHOME/etc/environment.d/30-data-science-python3.conf.bk
+
+## plpython3 환경 체크
+[gpadmin@cdw ~]$ psql
+psql (12.12)
+Type "help" for help.
+
+CREATE FUNCTION public.test_plpython3_version()
+RETURNS text AS $$
+   import sys
+   return str(sys.version_info)
+$$ language plpython3u;
+
+gpadmin=# select * from public.test_plpython3_version();
+                            test_plpython3_version
+------------------------------------------------------------------------------
+ sys.version_info(major=3, minor=9, micro=16, releaselevel='final', serial=0)
+(1 row)
+
+gpadmin=#
+CREATE OR REPLACE FUNCTION public.test_import_numpy(a int) 
+RETURNS boolean 
+AS $$
+import numpy
+if (a > 0):
+    return True
+else:
+    return False
+$$ LANGUAGE plpython3u;
+
+gpadmin=# select public.test_import_numpy(1);
+ERROR:  ModuleNotFoundError: No module named 'numpy'
+CONTEXT:  Traceback (most recent call last):
+  PL/Python function "test_import_numpy", line 2, in <module>
+    import numpy
+PL/Python function "test_import_numpy"
+gpadmin=#
+gpadmin=# set plpython3.python_path = '/usr/local/greenplum-db-7.0.0-beta.5/ext/DataSciencePython3.9/lib/python3.9/site-packages:/usr/local/greenplum-db-7.0.0-beta.5/ext/DataSciencePython3.9/lib64/python3.9/site-packages:/usr/local/greenplum-db-7.0.0-beta.5/lib/python';
+SET
+gpadmin=# select public.test_import_numpy(1);
+ test_import_numpy
+-------------------
+ t
+(1 row)
+
+gpadmin=# \q
+[gpadmin@cdw ~]$
+
+## Greenplum pl/python3 환경 설정
+[gpadmin@cdw ~]$ gpconfig -c plpython3.python_path -v "'/usr/local/greenplum-db-7.0.0-beta.5/ext/DataSciencePython3.9/lib/python3.9/site-packages:/usr/local/greenplum-db-7.0.0-beta.5/ext/DataSciencePython3.9/lib64/python3.9/site-packages:/usr/local/greenplum-db-7.0.0-beta.5/lib/python'" --skipvalidation
+[gpadmin@cdw ~]$ gpstop -af
+[gpadmin@cdw ~]$ gpstart -a
+[gpadmin@cdw ~]$ psql
+psql (12.12)
+Type "help" for help.
+
+gpadmin=# select public.test_import_numpy(1);
+ test_import_numpy
+-------------------
+ t
+(1 row)
+
+gpadmin=#\q
+[gpadmin@cdw ~]$

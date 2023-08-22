@@ -1,0 +1,39 @@
+###############################
+### 5. openai 설치
+###############################
+## openai의 API keys 확인
+https://openai.com/ 접속
+왼쪽 상단 personal 클릭
+API keys 생성, API key 복사 
+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
+openai_key = "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"
+
+
+[gpadmin@cdw ~]$ psql
+gpadmin=# select public.test_import_numpy(1);
+ test_import_numpy
+-------------------
+ t
+(1 row)
+
+gpadmin=#\q
+[gpadmin@cdw ~]$ psql
+gpadmin=#
+CREATE OR REPLACE FUNCTION public.test_import_openai(a int) 
+RETURNS boolean 
+AS $$
+import numpy
+import openai
+if (a > 0):
+    return True
+else:
+    return False
+$$ LANGUAGE plpython3u;
+CREATE FUNCTION
+gpadmin=# select public.test_import_openai(1);
+ test_import_openai
+--------------------
+ t
+(1 row)
+
+gpadmin=#

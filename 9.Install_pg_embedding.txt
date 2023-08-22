@@ -1,0 +1,73 @@
+##############################
+### 9. pg_embedding
+###############################
+
+https://github.com/neondatabase/pg_embedding
+https://neon.tech/docs/extensions/pg_embedding#migrate-from-pgvector-to-pgembedding
+
+## 컴파일에 필요한 라이브러리를 미리 설치
+[root@cdw ~]# yum install gcc gcc-c++ clang llvm llvm-devel -y
+
+## 소스 다운로드 및 버전 수정
+[gpadmin@cdw setup]$ unzip pg_embedding-main.zip
+[gpadmin@cdw setup]$ mv pg_embedding-main pg_embedding
+[gpadmin@cdw setup]$ cd pg_embedding/
+
+## 컴파일시 버전 체크 스크립트 수정
+## _PG_init(void) (121~149 라인) 에서 PG_VERSION_NUM >= 13000 를 PG_VERSION_NUM >= 12000 으로 수정 (4회)
+## 버전 수정을 소스 전체로 일괄적으로 바꾸면 컴파일시 에러 발생
+[gpadmin@cdw pg_embedding]$ vi embedding.c 
+~
+    121 _PG_init(void)
+    122 {
+    123         hnsw_relopt_kind = add_reloption_kind();
+    124         add_int_reloption(hnsw_relopt_kind, "dims", "Number of dimensions",
+    125                                           0, 0, INT_MAX
+    126 #if PG_VERSION_NUM >= 120000
+    127                                           , AccessExclusiveLock
+    128 #endif
+    129                                           );
+    130         add_int_reloption(hnsw_relopt_kind, "m", "Number of neighbors of each vertex",
+    131                                           DEFAULT_M, 0, INT_MAX
+    132 #if PG_VERSION_NUM >= 120000
+    133                                           , AccessExclusiveLock
+    134 #endif
+    135                                           );
+    136         add_int_reloption(hnsw_relopt_kind, "efconstruction", "Number of inspected neighbors during index construction",
+    137                                           DEFAULT_EF_CONSTRUCT, 1, INT_MAX
+    138 #if PG_VERSION_NUM >= 120000
+    139                                           , AccessExclusiveLock
+    140 #endif
+    141                                           );
+    142         add_int_reloption(hnsw_relopt_kind, "efsearch", "Number of inspected neighbors during index search",
+    143                                           DEFAULT_EF_SEARCH, 1, INT_MAX
+    144 #if PG_VERSION_NUM >= 120000
+    145                                           , AccessExclusiveLock
+    146 #endif
+    147                                           );
+    148         hnsw_init_dist_func();
+    149 }
+ ~  
+
+[gpadmin@cdw setup]$ make clean
+[gpadmin@cdw setup]$ make 
+[gpadmin@cdw setup]$ make install
+[gpadmin@cdw setup]$ psql
+[gpadmin@cdw pg_embedding]$ psql
+psql (12.12)
+Type "help" for help.
+
+gpadmin=# create extension embedding;
+CREATE EXTENSION
+gpadmin=# CREATE TABLE documents(id integer PRIMARY KEY, embedding real[]);
+CREATE TABLE
+gpadmin=# INSERT INTO documents(id, embedding) VALUES (1, '{0,1,2}'), (2, '{1,2,3}'),  (3, '{1,1,1}');
+INSERT 0 3
+gpadmin=# SELECT id FROM documents ORDER BY embedding <-> ARRAY[3,3,3] LIMIT 1;
+ id
+----
+  2
+(1 row)
+
+gpadmin=#\q
+[gpadmin@cdw pg_embedding]$
