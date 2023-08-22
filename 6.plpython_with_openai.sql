@@ -200,10 +200,8 @@ RETURNS VECTOR
 AS 
 $$
       import openai
-      ## hongdon
-      openai.api_key = "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"
-      ## sanghee
-      #openai.api_key = "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"
+      ## openai에 접속해서 api key 값 입력
+      openai.api_key = "api key"
       
       text = content 
       
