@@ -5,9 +5,8 @@
 https://openai.com/ 접속
 왼쪽 상단 personal 클릭
 API keys 생성, API key 복사 
-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
-openai_key = "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"
 
+openai_key = "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"
 
 [gpadmin@cdw ~]$ psql
 gpadmin=# select public.test_import_numpy(1);
