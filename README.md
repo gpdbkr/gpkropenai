@@ -1,10 +1,10 @@
-# Greenplum 7의 pgvector와 OpenAI를 이용하여 AI 기반의 검색 환경 구축
+# Greenplum 7의 AI 기반의 검색 환경 구축
 
 현재 Greenplum 7 beta5에 pgvector를 포함되어, pl/python과 openai를 연동하는 예제입니다.
 Greenplum pg_vector, openai의 연동 개념은 아래 링크에서 확인하실 수 있습니다.
 
-https://rfriend.tistory.com/804
-https://medium.com/greenplum-data-clinics/building-large-scale-ai-powered-search-in-greenplum-using-pgvector-and-openai-4f5c5811f54a
+### https://rfriend.tistory.com/804
+### https://medium.com/greenplum-data-clinics/building-large-scale-ai-powered-search-in-greenplum-using-pgvector-and-openai-4f5c5811f54a
 
 ## 환경 구축을 위한 스크립트
 
